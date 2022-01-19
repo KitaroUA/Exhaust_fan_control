@@ -3,7 +3,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="UTF-8">
-  <title>R710 Exhaust FAN Monitor</title>
+  <title>Exhaust FAN Monitor</title>
   <link rel="stylesheet" type="text/css" href="style.css">
   <script type="text/javascript" src="script.js"></script>
 
@@ -11,7 +11,7 @@ const char index_html[] PROGMEM = R"rawliteral(
   <script>    window.jQuery || document.write('<script src="../js/jquery-3.2.1.min.js"><\/script>')</script>
 </head>
 <body>
-  <h2>R710 Exhaust FAN Monitor</h2>
+  <h2>Exhaust FAN Monitor</h2>
   <p><span id="textSliderValue"/>%SLIDER_LABEL%</span></p>
   <p><input type="range" onchange="updateSliderPWM(this)" id="pwmSlider" min="0" max="%SLIDERMAXVALUE%" value="%SLIDERVALUE%" step="%SLIDERSTEP%" class="slider"></p>
   <p>
