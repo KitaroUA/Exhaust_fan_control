@@ -1,0 +1,5 @@
+[env:OTA-Debug]
+upload_port = ESP DNS or IP
+
+[env:OTA-Prod]
+upload_port = ESP DNS or IP

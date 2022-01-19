@@ -1,0 +1,31 @@
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE HTML><html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <title>R710 Exhaust FAN Monitor</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <script type="text/javascript" src="script.js"></script>
+
+  <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+  <script>    window.jQuery || document.write('<script src="../js/jquery-3.2.1.min.js"><\/script>')</script>
+</head>
+<body>
+  <h2>R710 Exhaust FAN Monitor</h2>
+  <p><span id="textSliderValue"/>%SLIDER_LABEL%</span></p>
+  <p><input type="range" onchange="updateSliderPWM(this)" id="pwmSlider" min="0" max="%SLIDERMAXVALUE%" value="%SLIDERVALUE%" step="%SLIDERSTEP%" class="slider"></p>
+  <p>
+    <i class="fas fa-thermometer-half" style="color:#059e8a;"></i> 
+    <span class="ds-labels">CPU 1</span> 
+    <span id="temp_sensor">%temp_sensor%</span>
+    <sup class="units">&deg;C</sup>
+  </p>
+  
+
+  
+  
+  <p style="text-align: center"><button style="height:11px;width:25px;vertical-align:bottom;" onclick="Reset_ESP()"></button></p>
+
+</body>
+</html>
+)rawliteral";
