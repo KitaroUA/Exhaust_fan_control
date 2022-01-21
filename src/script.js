@@ -18,6 +18,17 @@ function updateSliderPWM(element) {
   xhr.send();
 }
 
+
+function updateSwitch(element) {
+  var switchValue = document.getElementById("slider1").checked;
+//  document.getElementById("switch1").value = switchValue;
+  console.log(switchValue);
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", "/switch1?value="+switchValue, true);
+  xhr.send();
+}
+
+
 setInterval(function ( ) {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {

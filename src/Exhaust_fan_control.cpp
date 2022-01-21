@@ -20,7 +20,7 @@
 #include "WiFi_Auth.h"
 
 
-//#define isDebugging
+#define isDebugging
 #ifdef isDebugging
 //    #define debugDS
     #define Serial_D Serial1
@@ -39,8 +39,19 @@
 #define pwm__slider_step 1
 #define pwm__slider_max  100
 
+#define minimum_autoPWMvalue 1
+#define maximum_autoPWMvalue 255
+
 unsigned long DS18B20lastTime = 0;  
 unsigned long DS18B20Delay = 5000;
+
+#ifdef isDebugging
+float temp_min = 25.00;
+float temp_max = 30.00;
+#else
+float temp_min = 33.00;
+float temp_max = 40.00;
+#endif
 
 #define ONE_WIRE_BUS D5
 
@@ -61,7 +72,10 @@ DeviceAddress Device_Address;
 
 
 uint8_t sliderValue = 0;
+uint8_t sliderUpdate = 0;   // 1 - has update
 uint8_t PWMvalue = 0;
+uint8_t autoPWM = 0;
+uint8_t autoPWMvalue = 0;
 
 const char* PARAM_INPUT = "value";
 
@@ -200,6 +214,7 @@ void setup() {
 #endif
   
   sliderValue = read_slider_from_eeprom();
+  EEPROM.get(1, autoPWM);
   PWMvalue = sliderValue_to_PWM (sliderValue);
 
   analogWriteFreq(200);
@@ -283,17 +298,15 @@ void setup() {
     if (request->hasParam(PARAM_INPUT)) {
       inputMessage = request->getParam(PARAM_INPUT)->value();
       sliderValue = inputMessage.toInt();
-      PWMvalue = sliderValue_to_PWM (sliderValue);
-
-      // byte byte_slider_value = sliderValue.toInt();
-      // byte_slider_value = (((max_pwm - min_pwm)*byte_slider_value)/pwm__slider_max) + min_pwm;
+      sliderUpdate = 1;
+//      PWMvalue = sliderValue_to_PWM (sliderValue);
       ____Debug____(
         Serial_D.print ( "Slider Value = ");
         Serial_D.println (sliderValue, DEC);
         Serial_D.print ( "PWM Value = ");
         Serial_D.println (PWMvalue, DEC);
       )
-      analogWrite(output1, PWMvalue);
+//      analogWrite(output1, PWMvalue);
       EEPROM.put(0,sliderValue);
       EEPROM.commit();
 
@@ -308,31 +321,33 @@ void setup() {
     request->send(200, "text/plain", "OK");
   });
 
-/*
+
   // Send a GET request to <ESP_IP>/update?relay=<inputMessage>&state=<inputMessage2>
-  server.on("/update", HTTP_GET, [] (AsyncWebServerRequest *request) {
+  server.on("/switch1", HTTP_POST, [] (AsyncWebServerRequest *request) {
     String inputMessage;
     String inputParam;
-    String inputMessage2;
-    String inputParam2;
-    // GET input1 value on <ESP_IP>/update?relay=<inputMessage>
-    if (request->hasParam(PARAM_INPUT_1) & request->hasParam(PARAM_INPUT_2)) {
-      inputMessage = request->getParam(PARAM_INPUT_1)->value();
-      inputParam = PARAM_INPUT_1;
-      inputMessage2 = request->getParam(PARAM_INPUT_2)->value();
-      inputParam2 = PARAM_INPUT_2;
+        // GET input1 value on <ESP_IP>/update?relay=<inputMessage>
+    if (request->hasParam(PARAM_INPUT)) {
+      inputMessage = request->getParam(PARAM_INPUT)->value();
+      if (inputMessage.equals("true")){
+        autoPWM = 1;
+        EEPROM.put(1,autoPWM);
+        EEPROM.commit();
 
+      } else {
+        autoPWM = 0;
+        sliderUpdate = 1;
+        EEPROM.put(1,autoPWM);
+        EEPROM.commit();
+      }
     }
     else {
       inputMessage = "No message sent";
       inputParam = "none";
     }
-#ifdef isDebugging
-    Serial_D.println(inputMessage + inputMessage2);
-#endif
     request->send(200, "text/plain", "OK");
   });
-*/
+
 
   // Start server
   server.begin();
@@ -347,8 +362,36 @@ void loop() {
 
 
     if ((millis() - DS18B20lastTime) > DS18B20Delay) {
-
     readDSTemperatureC();
+    float weightedTemperature;
+    weightedTemperature = ((tempSensor1 - temp_min)/(temp_max - temp_min))*100;
+    if (weightedTemperature >= 100.00) { autoPWMvalue = maximum_autoPWMvalue;}
+    else if (weightedTemperature <= 1.00)  { autoPWMvalue = minimum_autoPWMvalue;}
+      else 
+      {
+        autoPWMvalue = sliderValue_to_PWM(weightedTemperature);
+      }
+      if (autoPWM){
+          analogWrite(output1, autoPWMvalue);
+                      ____Debug____(
+          Serial_D.print("Auto PWM");
+          Serial_D.print("Auto value (weighted to 100%) = ");
+          Serial_D.println(weightedTemperature);
+          Serial_D.print("Auto PWM value: ");
+          Serial_D.println(autoPWMvalue);
+                      )
+
+      }
+ 
+      
     DS18B20lastTime = millis();
+
   }  
+
+    if (sliderUpdate && !(autoPWM)) {
+      ____Debug____(Serial_D.println("Slider update");)
+      PWMvalue = sliderValue_to_PWM (sliderValue);
+      analogWrite(output1, PWMvalue);
+      sliderUpdate = 0;
+    }
 }
