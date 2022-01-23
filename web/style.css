@@ -1,4 +1,3 @@
-const char style_css[] PROGMEM = R"rawliteral(
 
 
     html {font-family: Arial; display: inline-block; text-align: center;}
@@ -88,4 +87,3 @@ const char style_css[] PROGMEM = R"rawliteral(
 .onoffswitch1-checkbox:checked + .onoffswitch1-label .onoffswitch1-switch {
     right: 0px; 
 }
-)rawliteral";

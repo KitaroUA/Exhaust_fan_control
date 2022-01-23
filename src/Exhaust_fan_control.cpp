@@ -267,7 +267,7 @@ void setup() {
 
   // Route for root / web page
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/html", index_html, processor);
+    request->send_P(200, "text/html", index_htm, processor);
   });
     server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/javascrip", script_js, processor);

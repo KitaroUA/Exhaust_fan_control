@@ -1,4 +1,3 @@
-const char script_js[] PROGMEM = R"rawliteral(
 
 
 function toggleCheckbox(element) {
@@ -48,4 +47,3 @@ function Reset_ESP ()
 //  xhr.send();
 $.post("resetesp");
 }
-)rawliteral";
