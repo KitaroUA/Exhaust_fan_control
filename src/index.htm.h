@@ -1,3 +1,4 @@
+const char index_htm[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -104,3 +105,4 @@
 
 </body>
 </html>
+)rawliteral";

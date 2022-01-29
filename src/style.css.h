@@ -29,7 +29,7 @@ const char style_css[] PROGMEM = R"rawliteral(
 
 .onoffswitch1 {
     position: relative; width: 90px;
-    -webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;
+    -webkit-user-select:none; -moz-user-select:none; -ms-user-select: none; user-select: none;
 }
 .onoffswitch1-checkbox {
     display: none;
@@ -88,4 +88,5 @@ const char style_css[] PROGMEM = R"rawliteral(
 .onoffswitch1-checkbox:checked + .onoffswitch1-label .onoffswitch1-switch {
     right: 0px; 
 }
+/* the end*/
 )rawliteral";

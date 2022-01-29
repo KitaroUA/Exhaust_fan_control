@@ -8,14 +8,17 @@
 
 #include <EEPROM.h>
 
+#include <Wire.h>               // Only needed for Arduino 1.6.5 and earlier
+#include "SSD1306Wire.h"        // legacy: #include "SSD1306.h"
+
 #include <Arduino.h>
 #include <Hash.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include "index.htm"
-#include "script.js"
-#include "style.css"
-#include "jquery-3.2.1.min.js"
+#include "index.htm.h"
+#include "script.js.h"
+#include "style.css.h"
+#include "jquery-3.2.1.min.js.h"
 
 #include "WiFi_Auth.h"
 
@@ -28,12 +31,9 @@
 #else
 #define ____Debug____(x)  (void)0;
 #endif
-
-
-
-
-
 #define strickt_wifi
+
+
 #define min_pwm 140
 #define max_pwm 255
 #define pwm__slider_step 1
@@ -43,7 +43,10 @@
 #define maximum_autoPWMvalue 255
 
 unsigned long DS18B20lastTime = 0;  
-unsigned long DS18B20Delay = 5000;
+#define DS18B20Delay  5000
+unsigned long heartbeat_timer = 0;
+bool  heartbeat_state = 0;
+#define heartbeat_delay 1000
 
 #ifdef isDebugging
 float temp_min = 25.00;
@@ -62,6 +65,7 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
 float tempSensor1;
+int weightedTemperature;
 
 #ifdef debugDS
 int numberOfDevices;
@@ -78,9 +82,12 @@ uint8_t autoPWM = 0;
 uint8_t autoPWMvalue = 0;
 
 const char* PARAM_INPUT = "value";
+const char* PARAM_INPUT1 = "sensor_data";
 
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
+
+SSD1306Wire display(0x3c, SDA, SCL, GEOMETRY_128_32); 
 
 void readDSTemperatureC() {  
     sensors.requestTemperatures(); // Send the command to get temperatures
@@ -180,6 +187,12 @@ void setup() {
  
   WiFi.mode(WIFI_STA);
   EEPROM.begin(4);
+
+  display.init();
+
+  display.flipScreenVertically();
+  display.setFont(ArialMT_Plain_24);
+
 
 #ifdef debugDS
   // Grab a count of devices on the wire
@@ -322,6 +335,32 @@ void setup() {
   });
 
 
+  // Send a GET request to <ESP_IP>/slider?value=<inputMessage>
+  server.on("/index_get_data", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    String inputMessage;
+    // GET input1 value on <ESP_IP>/slider?value=<inputMessage>
+    ____Debug____(
+      Serial_D.println("Recieved get data request");
+    )
+    if (request->hasParam(PARAM_INPUT1)) {
+      inputMessage = request->getParam(PARAM_INPUT1)->value();
+
+    }
+    else {
+      inputMessage = "No message sent";
+    }
+#ifdef isDebugging
+    Serial_D.print("/index_get_data input message: ");
+    Serial_D.println(inputMessage);
+#endif
+    String response = String(tempSensor1)+";"+String((int)sliderValue)+";"+String((int)weightedTemperature)+";"+String(autoPWM);
+    ____Debug____(
+      Serial_D.println("Responce " + response);
+    )    
+    request->send(200, "text/plain", response);
+  });
+
+
   // Send a GET request to <ESP_IP>/update?relay=<inputMessage>&state=<inputMessage2>
   server.on("/switch1", HTTP_POST, [] (AsyncWebServerRequest *request) {
     String inputMessage;
@@ -348,9 +387,11 @@ void setup() {
     request->send(200, "text/plain", "OK");
   });
 
-
+  
   // Start server
   server.begin();
+
+  
 
 
 }
@@ -358,40 +399,83 @@ void setup() {
 
 
 void loop() {
+  
   ArduinoOTA.handle();
 
+  
 
-    if ((millis() - DS18B20lastTime) > DS18B20Delay) {
-    readDSTemperatureC();
-    float weightedTemperature;
-    weightedTemperature = ((tempSensor1 - temp_min)/(temp_max - temp_min))*100;
-    if (weightedTemperature >= 100.00) { autoPWMvalue = maximum_autoPWMvalue;}
-    else if (weightedTemperature <= 1.00)  { autoPWMvalue = minimum_autoPWMvalue;}
-      else 
-      {
-        autoPWMvalue = sliderValue_to_PWM(weightedTemperature);
-      }
-      if (autoPWM){
-          analogWrite(output1, autoPWMvalue);
-                      ____Debug____(
-          Serial_D.print("Auto PWM");
-          Serial_D.print("Auto value (weighted to 100%) = ");
-          Serial_D.println(weightedTemperature);
-          Serial_D.print("Auto PWM value: ");
-          Serial_D.println(autoPWMvalue);
-                      )
 
-      }
- 
+      if ((millis() - DS18B20lastTime) > DS18B20Delay) {
+      readDSTemperatureC();
       
-    DS18B20lastTime = millis();
+      weightedTemperature = ((tempSensor1 - temp_min)/(temp_max - temp_min))*100;
+      if (weightedTemperature >= 100.00) { autoPWMvalue = maximum_autoPWMvalue; weightedTemperature = 100;}
+      else if (weightedTemperature <= 1.00)  { autoPWMvalue = minimum_autoPWMvalue; weightedTemperature = 0;}
+        else 
+        {
+          autoPWMvalue = sliderValue_to_PWM(weightedTemperature);
+        }
+        if (autoPWM){
+            analogWrite(output1, autoPWMvalue);
+                        ____Debug____(
+            Serial_D.print("Auto PWM");
+            Serial_D.print("Auto value (weighted to 100%) = ");
+            Serial_D.println(weightedTemperature);
+            Serial_D.print("Auto PWM value: ");
+            Serial_D.println(autoPWMvalue);
+                        )
 
-  }  
+        }
+      char buffer[64];
+      
+      String bufferS;
+      snprintf(buffer, sizeof buffer, "%.2f", tempSensor1);  
+      ____Debug____(
+      Serial_D.printf("Buffer: ");
+      Serial_D.println( buffer);  
+      Serial_D.println();
+      )
+      display.clear();
+      display.setTextAlignment(TEXT_ALIGN_LEFT);
+      bufferS = buffer;
+      if (autoPWM == 0){
+        bufferS += "° M";
+      }
+      else {
+        bufferS += "° A";
+        
+      }
+      display.drawString(0, 0, bufferS);
+      display.display();
+      DS18B20lastTime = millis();
+      
 
-    if (sliderUpdate && !(autoPWM)) {
-      ____Debug____(Serial_D.println("Slider update");)
-      PWMvalue = sliderValue_to_PWM (sliderValue);
-      analogWrite(output1, PWMvalue);
-      sliderUpdate = 0;
-    }
+    }  
+
+      if (sliderUpdate && !(autoPWM)) {
+        ____Debug____(Serial_D.println("Slider update");)
+        PWMvalue = sliderValue_to_PWM (sliderValue);
+        analogWrite(output1, PWMvalue);
+        sliderUpdate = 0;
+      }
+
+      if ((millis() - heartbeat_timer) > heartbeat_delay) {
+          if (heartbeat_state){
+            heartbeat_state = false;
+            display.drawRect (125, 0, 2, 2);
+            display.display();
+
+          }
+          else {
+            heartbeat_state = true;
+            display.setColor(BLACK);
+            display.drawRect (125, 0, 2, 2);
+            display.setColor(WHITE);
+            display.display();
+
+          }
+          heartbeat_timer = millis();
+      }
+    
+    
 }

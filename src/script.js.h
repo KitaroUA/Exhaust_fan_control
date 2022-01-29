@@ -16,6 +16,7 @@ function updateSliderPWM(element) {
   var xhr = new XMLHttpRequest();
   xhr.open("GET", "/slider?value="+sliderValue, true);
   xhr.send();
+
 }
 
 
@@ -26,9 +27,10 @@ function updateSwitch(element) {
   var xhr = new XMLHttpRequest();
   xhr.open("POST", "/switch1?value="+switchValue, true);
   xhr.send();
+  get_data();
 }
 
-
+/*
 setInterval(function ( ) {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
@@ -39,7 +41,7 @@ setInterval(function ( ) {
   xhttp.open("GET", "/temp_sensor", true);
   xhttp.send();
 }, 10000) ;
-
+*/
 
 function Reset_ESP ()
 {

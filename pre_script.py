@@ -13,5 +13,5 @@ for e in ['./web/*.htm', './web/*.css', './web/*.js']:
 		if not ( lines[-1].startswith(')rawliteral";') ) :
 			print("add end")
 			data = data + '\n)rawliteral";'
-		with open('./src/'+file[6:], 'w') as modified: modified.write(data)
+		with open('./src/'+file[6:]+'.h', 'w') as modified: modified.write(data)
 #os.chdir("..")
