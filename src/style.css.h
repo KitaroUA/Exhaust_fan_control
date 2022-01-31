@@ -10,9 +10,7 @@ const char style_css[] PROGMEM = R"rawliteral(
     .slider::-webkit-slider-thumb {-webkit-appearance: none; appearance: none; width: 35px; height: 35px; background: #003249; cursor: pointer;}
     .slider::-moz-range-thumb { width: 35px; height: 35px; background: #003249; cursor: pointer; } 
 
-    .switch_b {position: relative; display: inline-block; width: 120px; height: 68px} 
-    .switch_b input {display: none}
-    .slider_b {position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 34px}
+   .slider_b {position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 34px}
     .slider_b:before {position: absolute; content: ""; height: 52px; width: 52px; left: 8px; bottom: 8px; background-color: #fff; -webkit-transition: .4s; transition: .4s; border-radius: 68px}
     input:checked+.slider_b {background-color: #2196F3}
     input:checked+.slider_b:before {-webkit-transform: translateX(52px); -ms-transform: translateX(52px); transform: translateX(52px)}

@@ -17,6 +17,7 @@
 #include <DallasTemperature.h>
 #include "index.htm.h"
 #include "script.js.h"
+#include "favicon.bmp.h"
 #include "style.css.h"
 #include "jquery-3.2.1.min.js.h"
 
@@ -287,6 +288,10 @@ void setup() {
   });
     server.on("/jquery-3.2.1.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/javascrip", jquery_3_2_1_min_js, processor);
+  });
+
+    server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "image/bmp", favicon_bmp, processor);
   });
 
   

@@ -1,6 +1,6 @@
 import glob, os
 #os.chdir("src")
-for e in ['./web/*.htm', './web/*.css', './web/*.js']:
+for e in ['./web/*.htm', './web/*.css', './web/*.js', './web/*.bmp']:
 	for file in glob.glob(e):
 		print(file[6:])
 		with open(file, 'r') as original: lines = original.readlines()

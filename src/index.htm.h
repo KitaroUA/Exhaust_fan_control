@@ -65,9 +65,9 @@ const char index_htm[] PROGMEM = R"rawliteral(
    get_data();
   
   };
-  
+
   </script>
-   
+     
    <body onload="load_script()">
   <h2>Exhaust FAN Monitor</h2>
   <div id="textSliderValue"></div>
