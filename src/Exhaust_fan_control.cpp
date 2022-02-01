@@ -8,8 +8,16 @@
 
 #include <EEPROM.h>
 
-#include <Wire.h>               // Only needed for Arduino 1.6.5 and earlier
-#include "SSD1306Wire.h"        // legacy: #include "SSD1306.h"
+#define OLED
+
+#ifdef OLED
+    #include "SSD1306Wire.h"   
+    #define ___OLED___(x) x
+#else
+    #define ___OLED___(x) (void)0;
+#endif   
+
+#include <AsyncMqttClient.h>
 
 #include <Arduino.h>
 #include <Hash.h>
@@ -30,7 +38,7 @@
     #define Serial_D Serial1
     #define ____Debug____(x) x
 #else
-#define ____Debug____(x)  (void)0;
+    #define ____Debug____(x)  (void)0;
 #endif
 #define strickt_wifi
 
@@ -44,7 +52,7 @@
 #define maximum_autoPWMvalue 255
 
 unsigned long DS18B20lastTime = 0;  
-#define DS18B20Delay  5000
+#define DS18B20Delay  15000
 unsigned long heartbeat_timer = 0;
 bool  heartbeat_state = 0;
 #define heartbeat_delay 1000
@@ -88,7 +96,30 @@ const char* PARAM_INPUT1 = "sensor_data";
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
 
-SSD1306Wire display(0x3c, SDA, SCL, GEOMETRY_128_32); 
+#ifdef OLED
+  SSD1306Wire display(0x3c, SDA, SCL, GEOMETRY_128_32);
+#endif
+
+
+
+
+#define MQTT_HOST IPAddress(192, 168, 103, 99)
+
+#define MQTT_PORT 1883
+
+bool MQTT_connection_status = false;
+
+#ifdef Prod_board
+#define MQTT_PUB_TEMP1 "exhaust_fan/temperature"
+#define MQTT_PUB_TEMP2 "exhaust_fan/PWM100"
+#define MQTT_PUB_TEMP3 "exhaust_fan/autoPWM"
+#else
+#define MQTT_PUB_TEMP1 "dev_exhaust_fan/temperature"
+#define MQTT_PUB_TEMP2 "dev_exhaust_fan/PWM100"
+#define MQTT_PUB_TEMP3 "dev_exhaust_fan/autoPWM"
+#endif
+
+AsyncMqttClient mqttClient;
 
 void readDSTemperatureC() {  
     sensors.requestTemperatures(); // Send the command to get temperatures
@@ -175,6 +206,52 @@ String processor(const String& var){
   return String();
 }
 
+void connectToMqtt() {
+  ____Debug____ (
+   Serial_D.println("Connecting to MQTT...");
+  )
+  mqttClient.connect();
+  MQTT_connection_status = true;
+  
+}
+
+void onMqttConnect(bool sessionPresent) {
+  ____Debug____ (
+  Serial_D.println("Connected to MQTT.");
+  Serial_D.print("Session present: ");
+  Serial_D.println(sessionPresent);
+  )
+}
+
+void onMqttPublish(uint16_t packetId) {
+  ____Debug____ (
+  Serial_D.print("Publish acknowledged.");
+  Serial_D.print("  packetId: ");
+  Serial_D.println(packetId);
+  )
+}
+
+void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
+  MQTT_connection_status = false;
+  ____Debug____ (
+  Serial_D.println("Disconnected from MQTT.");
+  )
+}
+
+
+
+
+
+
+
+
+
+
+// =======================================================================================
+// =======================================================================================
+// ======================== SETUP ========================================================
+// =======================================================================================
+// =======================================================================================
 void setup() {
 #ifdef isDebugging
   
@@ -189,10 +266,12 @@ void setup() {
   WiFi.mode(WIFI_STA);
   EEPROM.begin(4);
 
-  display.init();
+  ___OLED___( 
+    display.init();
 
-  display.flipScreenVertically();
-  display.setFont(ArialMT_Plain_24);
+    display.flipScreenVertically();
+    display.setFont(ArialMT_Plain_24);
+  )
 
 
 #ifdef debugDS
@@ -246,6 +325,7 @@ void setup() {
     ESP.restart();
   }
 #endif
+
 
   ArduinoOTA.onStart([]() {
 #ifdef isDebugging
@@ -396,10 +476,25 @@ void setup() {
   // Start server
   server.begin();
 
-  
+  mqttClient.onConnect(onMqttConnect);
+  mqttClient.onDisconnect(onMqttDisconnect);
+  //mqttClient.onSubscribe(onMqttSubscribe);
+  //mqttClient.onUnsubscribe(onMqttUnsubscribe);
+  mqttClient.onPublish(onMqttPublish);
+  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+  mqttClient.setCredentials("mqtt-user","Mrainb0wT");
+ 
+
+  connectToMqtt();
+ 
 
 
 }
+// =======================================================================================
+// =======================================================================================
+// ======================== END SETUP ========================================================
+// =======================================================================================
+// =======================================================================================
 
 
 
@@ -440,6 +535,7 @@ void loop() {
       Serial_D.println( buffer);  
       Serial_D.println();
       )
+      ___OLED___(
       display.clear();
       display.setTextAlignment(TEXT_ALIGN_LEFT);
       bufferS = buffer;
@@ -452,6 +548,19 @@ void loop() {
       }
       display.drawString(0, 0, bufferS);
       display.display();
+      )
+
+      if (!MQTT_connection_status) connectToMqtt();
+
+      mqttClient.publish(MQTT_PUB_TEMP1, 1, true, String(tempSensor1).c_str());
+      if (autoPWM == 1){
+        mqttClient.publish(MQTT_PUB_TEMP2, 1, true, String((int)weightedTemperature).c_str());
+      }
+      else{
+        mqttClient.publish(MQTT_PUB_TEMP2, 1, true, String((int)sliderValue).c_str());
+      }      
+      mqttClient.publish(MQTT_PUB_TEMP3, 1, true, String(autoPWM).c_str());
+
       DS18B20lastTime = millis();
       
 
@@ -467,16 +576,20 @@ void loop() {
       if ((millis() - heartbeat_timer) > heartbeat_delay) {
           if (heartbeat_state){
             heartbeat_state = false;
+            ___OLED___(
             display.drawRect (125, 0, 2, 2);
             display.display();
+            )
 
           }
           else {
             heartbeat_state = true;
+            ___OLED___(
             display.setColor(BLACK);
             display.drawRect (125, 0, 2, 2);
             display.setColor(WHITE);
             display.display();
+            )
 
           }
           heartbeat_timer = millis();

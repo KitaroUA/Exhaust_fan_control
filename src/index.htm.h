@@ -1,5 +1,6 @@
 const char index_htm[] PROGMEM = R"rawliteral(
-<!DOCTYPE HTML><html>
+<!DOCTYPE HTML>
+<html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="UTF-8">
@@ -68,17 +69,39 @@ const char index_htm[] PROGMEM = R"rawliteral(
 
   </script>
      
-   <body onload="load_script()">
-  <h2>Exhaust FAN Monitor</h2>
-  <div id="textSliderValue"></div>
-  <p><input type="range" onchange="updateSliderPWM(this)" id="pwmSlider" min="0" max="%SLIDERMAXVALUE%" step="%SLIDERSTEP%" class="slider"></p>
-  <p>
-    <i class="fas fa-thermometer-half" style="color:#059e8a;"></i> 
-    <div id="temperature"></div>
-  </p>
+  <body onload="load_script()">
+  <div id="main">
+  <table id="table" width="auto" align="center">
+
+
+  <tr>
+    <td colspan="2" align="center">
+      <h1>Exhaust FAN Monitor</h1>
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center" colspan="2">
+      <font font size="5" class="switch_text" >
+      <div id="textSliderValue" ></div> </font>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <p><input type="range" onchange="updateSliderPWM(this)" id="pwmSlider" min="0" max="%SLIDERMAXVALUE%" step="%SLIDERSTEP%" class="slider"></p>
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center" colspan="2">
+        <font font size="5" class="switch_text" >
+        <div id="temperature"></div>
+        </font>
+    </td>
+  </tr>
   
   <tr>
-    <td align="right">
+    <td align="left">
       <div class="onoffswitch1">
       <input type="checkbox" class="onoffswitch1-checkbox" id="slider1" name="slider1" onchange="updateSwitch(this)" > 
         <label class="onoffswitch1-label" for="slider1"> 
@@ -86,22 +109,25 @@ const char index_htm[] PROGMEM = R"rawliteral(
               <span class="onoffswitch1-switch"></span>
       </label>
       </div>
-      </td>
-
-
-    
-    
-    <td align="left"><font size="5" class="switch_text"><div id="checker_1_text"></div></font></td>
+    </td>
+    <td align="left">
+      <font size="5" class="switch_text">
+        <div id="checker_1_text"></div>
+      </font>
+    </td>
   </tr>
   
-  
-  <p style="text-align: center"><button style="height:11px;width:25px;vertical-align:bottom;" onclick="Reset_ESP()"></button></p>
+  <tr>
+    <td align="center" colspan="2"> 
+      <p style="text-align: center"><button style="height:11px;width:25px;vertical-align:bottom;" onclick="Reset_ESP()"></button></p>
+    </td>
+  </tr>
 
 
 
 
-
-
+</table>
+</div>
 
 </body>
 </html>
