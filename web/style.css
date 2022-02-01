@@ -4,6 +4,7 @@ body {
 	font-family: sans-serif;
 	padding: 30px;
     max-width: 800px;
+    min-width: 600px;
     margin: auto;
     
 }
@@ -30,11 +31,6 @@ body {
 
     .slider_b {position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 34px}
     .slider_b:before {position: absolute; content: ""; height: 52px; width: 52px; left: 8px; bottom: 8px; background-color: #fff; -webkit-transition: .4s; transition: .4s; border-radius: 68px}
-
-
-
-
-
 
 
 
@@ -69,7 +65,7 @@ body {
 
     .onoffswitch1 {
         position: relative; width: 90px;
-        -webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;
+        -webkit-user-select:none; -moz-user-select:none; -ms-user-select: none; user-select: none;
     }
     .onoffswitch1-checkbox {
         display: none;

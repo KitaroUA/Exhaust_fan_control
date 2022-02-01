@@ -87,8 +87,8 @@ const char index_htm[] PROGMEM = R"rawliteral(
     </td>
   </tr>
   <tr>
-    <td>
-      <p><input type="range" onchange="updateSliderPWM(this)" id="pwmSlider" min="0" max="%SLIDERMAXVALUE%" step="%SLIDERSTEP%" class="slider"></p>
+    <td align="center" colspan="2">
+      <input type="range" onchange="updateSliderPWM(this)" id="pwmSlider" min="0" max="%SLIDERMAXVALUE%" step="%SLIDERSTEP%" class="slider">
     </td>
   </tr>
 
