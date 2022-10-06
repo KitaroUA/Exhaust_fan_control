@@ -32,7 +32,24 @@
 #include "WiFi_Auth.h"
 
 
+#ifdef Prod_board
+
+#define MQTT_PUB_TEMP1 "exhaust_fan/temperature"
+#define MQTT_PUB_TEMP2 "exhaust_fan/PWM100"
+#define MQTT_PUB_TEMP3 "exhaust_fan/autoPWM"
+
+#else
+
 #define isDebugging
+
+
+#define MQTT_PUB_TEMP1 "dev_exhaust_fan/temperature"
+#define MQTT_PUB_TEMP2 "dev_exhaust_fan/PWM100"
+#define MQTT_PUB_TEMP3 "dev_exhaust_fan/autoPWM"
+
+#endif
+
+
 #ifdef isDebugging
 //    #define debugDS
     #define Serial_D Serial1
@@ -48,7 +65,7 @@
 #define pwm__slider_step 1
 #define pwm__slider_max  100
 
-#define minimum_autoPWMvalue 1
+#define minimum_autoPWMvalue 140
 #define maximum_autoPWMvalue 255
 
 unsigned long DS18B20lastTime = 0;  
@@ -61,8 +78,8 @@ bool  heartbeat_state = 0;
 float temp_min = 25.00;
 float temp_max = 30.00;
 #else
-float temp_min = 33.00;
-float temp_max = 40.00;
+float temp_min = 36.00;
+float temp_max = 42.00;
 #endif
 
 #define ONE_WIRE_BUS D5
@@ -85,7 +102,8 @@ DeviceAddress Device_Address;
 
 
 uint8_t sliderValue = 0;
-uint8_t sliderUpdate = 0;   // 1 - has update
+uint8_t GUI_Update = 0;   // 1 - has update
+uint8_t MQTT_Update = 0;
 uint8_t PWMvalue = 0;
 uint8_t autoPWM = 0;
 uint8_t autoPWMvalue = 0;
@@ -109,15 +127,7 @@ AsyncWebServer server(80);
 
 bool MQTT_connection_status = false;
 
-#ifdef Prod_board
-#define MQTT_PUB_TEMP1 "exhaust_fan/temperature"
-#define MQTT_PUB_TEMP2 "exhaust_fan/PWM100"
-#define MQTT_PUB_TEMP3 "exhaust_fan/autoPWM"
-#else
-#define MQTT_PUB_TEMP1 "dev_exhaust_fan/temperature"
-#define MQTT_PUB_TEMP2 "dev_exhaust_fan/PWM100"
-#define MQTT_PUB_TEMP3 "dev_exhaust_fan/autoPWM"
-#endif
+
 
 AsyncMqttClient mqttClient;
 
@@ -160,8 +170,8 @@ uint8_t sliderValue_to_PWM (uint8_t value)
     responce = 0;
     break;
   case 1 ... 99:
+    responce = ((max_pwm - min_pwm)*(value/pwm__slider_max)) + min_pwm;
     ____Debug____(Serial_D.println("case 1 .. 99");)
-    responce = (((max_pwm - min_pwm)*value)/pwm__slider_max) + min_pwm;
     break;
   case 100:
     ____Debug____(Serial_D.println("case 100");)
@@ -217,9 +227,16 @@ void connectToMqtt() {
 
 void onMqttConnect(bool sessionPresent) {
   ____Debug____ (
-  Serial_D.println("Connected to MQTT.");
-  Serial_D.print("Session present: ");
-  Serial_D.println(sessionPresent);
+    Serial_D.println("Connected to MQTT.");
+    Serial_D.print("Session present: ");
+    Serial_D.println(sessionPresent);
+  )
+
+  mqttClient.subscribe(MQTT_PUB_TEMP2, 2);
+  uint16_t packetIdSub = mqttClient.subscribe(MQTT_PUB_TEMP3, 2);
+  ____Debug____ (
+    Serial_D.print("Subscribing at QoS 2, packetId: ");
+    Serial_D.println(packetIdSub);
   )
 }
 
@@ -239,7 +256,83 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
 }
 
 
+void onMqttSubscribe(uint16_t packetId, uint8_t qos) {
+  ____Debug____ (
+    Serial_D.println("Subscribe acknowledged.");
+    Serial_D.print("  packetId: ");
+    Serial_D.println(packetId);
+    Serial_D.print("  qos: ");
+    Serial_D.println(qos);
+  )
+}
 
+void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
+  char truncated_payload[10] = "";
+  strncat(truncated_payload, payload, len);
+  ____Debug____ (
+    Serial_D.print("Publish received, topic: ");
+    Serial_D.print(topic);
+    Serial_D.print(", payload: ");
+
+    Serial_D.print(truncated_payload);
+    Serial_D.print(", lenght: ");
+    Serial_D.println(len);
+  )
+
+    if( (strcmp(topic,MQTT_PUB_TEMP2) == 0) && (autoPWM == 0)) // Apply 0..100 PWM value, when PWM set to manual
+    {
+      
+        sliderValue = atoi(truncated_payload);
+        EEPROM.put(0,sliderValue);
+        EEPROM.commit();
+        MQTT_Update = 1;
+      
+    }
+
+    if( strcmp(topic,MQTT_PUB_TEMP3) == 0) // Change mode Manual (0)|Auto(1)
+    {
+      ____Debug____ (
+      Serial_D.println("Hit AutoPWM");
+      Serial_D.print("Old value: ");
+      Serial_D.println(autoPWM);
+      )
+      autoPWM = atoi(truncated_payload);
+      ____Debug____ (
+      Serial_D.print("New value: ");
+      Serial_D.println(autoPWM);      
+      )
+      EEPROM.put(1,autoPWM);
+      EEPROM.commit();
+      
+      if (!(autoPWM)){
+          mqttClient.publish(MQTT_PUB_TEMP2, 1, true, String((int)sliderValue).c_str());
+        }
+
+      MQTT_Update = 1;
+    }
+
+
+
+
+  // ____Debug____ (
+  //   Serial_D.println("Publish received.");
+  //   Serial_D.print("  topic: ");
+  //   Serial_D.println(topic);
+  //   Serial_D.println(payload);
+  //   Serial_D.print("  qos: ");
+  //   Serial_D.println(properties.qos);
+  //   Serial_D.print("  dup: ");
+  //   Serial_D.println(properties.dup);
+  //   Serial_D.print("  retain: ");
+  //   Serial_D.println(properties.retain);
+  //   Serial_D.print("  len: ");
+  //   Serial_D.println(len);
+  //   Serial_D.print("  index: ");
+  //   Serial_D.println(index);
+  //   Serial_D.print("  total: ");
+  //   Serial_D.println(total);
+  // )
+}
 
 
 
@@ -268,7 +361,6 @@ void setup() {
 
   ___OLED___( 
     display.init();
-
     display.flipScreenVertically();
     display.setFont(ArialMT_Plain_24);
   )
@@ -310,7 +402,7 @@ void setup() {
   EEPROM.get(1, autoPWM);
   PWMvalue = sliderValue_to_PWM (sliderValue);
 
-  analogWriteFreq(200);
+  analogWriteFreq(2000);
 
   analogWrite(output1, PWMvalue);
 
@@ -396,7 +488,7 @@ void setup() {
     if (request->hasParam(PARAM_INPUT)) {
       inputMessage = request->getParam(PARAM_INPUT)->value();
       sliderValue = inputMessage.toInt();
-      sliderUpdate = 1;
+      GUI_Update = 1;
 //      PWMvalue = sliderValue_to_PWM (sliderValue);
       ____Debug____(
         Serial_D.print ( "Slider Value = ");
@@ -455,12 +547,13 @@ void setup() {
       inputMessage = request->getParam(PARAM_INPUT)->value();
       if (inputMessage.equals("true")){
         autoPWM = 1;
+        GUI_Update = 1;
         EEPROM.put(1,autoPWM);
         EEPROM.commit();
 
       } else {
         autoPWM = 0;
-        sliderUpdate = 1;
+        GUI_Update = 1;
         EEPROM.put(1,autoPWM);
         EEPROM.commit();
       }
@@ -478,8 +571,9 @@ void setup() {
 
   mqttClient.onConnect(onMqttConnect);
   mqttClient.onDisconnect(onMqttDisconnect);
-  //mqttClient.onSubscribe(onMqttSubscribe);
+  mqttClient.onSubscribe(onMqttSubscribe);
   //mqttClient.onUnsubscribe(onMqttUnsubscribe);
+  mqttClient.onMessage(onMqttMessage);
   mqttClient.onPublish(onMqttPublish);
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setCredentials("mqtt-user","Mrainb0wT");
@@ -553,25 +647,42 @@ void loop() {
       if (!MQTT_connection_status) connectToMqtt();
 
       mqttClient.publish(MQTT_PUB_TEMP1, 1, true, String(tempSensor1).c_str());
+
       if (autoPWM == 1){
-        mqttClient.publish(MQTT_PUB_TEMP2, 1, true, String((int)weightedTemperature).c_str());
-      }
-      else{
-        mqttClient.publish(MQTT_PUB_TEMP2, 1, true, String((int)sliderValue).c_str());
-      }      
-      mqttClient.publish(MQTT_PUB_TEMP3, 1, true, String(autoPWM).c_str());
+          mqttClient.publish(MQTT_PUB_TEMP2, 1, true, String((int)weightedTemperature).c_str());
+        }
+
+
 
       DS18B20lastTime = millis();
       
 
     }  
 
-      if (sliderUpdate && !(autoPWM)) {
-        ____Debug____(Serial_D.println("Slider update");)
-        PWMvalue = sliderValue_to_PWM (sliderValue);
-        analogWrite(output1, PWMvalue);
-        sliderUpdate = 0;
+      if (GUI_Update) {
+
+        mqttClient.publish(MQTT_PUB_TEMP2, 1, true, String((int)sliderValue).c_str());
+        mqttClient.publish(MQTT_PUB_TEMP3, 1, true, String(autoPWM).c_str());
+
+        if (!(autoPWM)) {
+          ____Debug____(Serial_D.println("Slider update");)
+          PWMvalue = sliderValue_to_PWM (sliderValue);
+          analogWrite(output1, PWMvalue);          
+        }
+        GUI_Update = 0;
+
       }
+
+      if (MQTT_Update){
+        if (!(autoPWM)) {
+          ____Debug____(Serial_D.println("Slider update");)
+          PWMvalue = sliderValue_to_PWM (sliderValue);
+          analogWrite(output1, PWMvalue); 
+        }
+        MQTT_Update = 0;  
+      }
+
+
 
       if ((millis() - heartbeat_timer) > heartbeat_delay) {
           if (heartbeat_state){

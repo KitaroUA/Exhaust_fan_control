@@ -32,14 +32,18 @@ const char index_htm[] PROGMEM = R"rawliteral(
       
       
       if (myVars.autoPWM == "1"){
-          $("#pwmSlider").prop("disabled", true);
-          $("#textSliderValue").html("FAN: " + myVars.weighted_temperature+"&percnt;");
-          $("#slider1" ).prop( "checked", true );
-          $("#checker_1_text").html("Auto ");
+        $("#pwmSlider").prop("disabled", true);
+          $("#pwmSlider").prop("value", myVars.weighted_temperature);
+          $("#pwmSlider").refresh;
 
+          $("#textSliderValue").html("FAN: " + myVars.weighted_temperature+"&percnt;");
+          $("#slider1").prop( "checked", true );
+          $("#checker_1_text").html("Auto ");
         }
         else {
           $("#pwmSlider").prop("disabled", false);
+          $("#pwmSlider").prop("value", myVars.slider_value);
+          $("#pwmSlider").refresh;
           $("#textSliderValue").html("FAN: " + myVars.slider_value+"&percnt;");
           $("#slider1" ).prop( "checked", false );
           $("#checker_1_text").html("Manual");
